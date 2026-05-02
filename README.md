@@ -257,20 +257,9 @@ sudo ufw allow 5678/tcp
 The Splunk alert uses this SPL search (see full file: `splunk/searches/brute_force_detection.spl`):
 
 ```spl
-index=windows_logs sourcetype="WinEventLog:Security" EventCode=4625
-| bucket _time span=1m
-| stats count as failed_attempts, 
-        values(Account_Name) as targeted_users,
-        values(Workstation_Name) as target_host
-  by _time, src_ip
-| where failed_attempts >= 5
-| eval severity=case(
-    failed_attempts >= 20, "CRITICAL",
-    failed_attempts >= 10, "HIGH",
-    failed_attempts >= 5,  "MEDIUM",
-    true(),                "LOW"
-  )
-| table _time, src_ip, failed_attempts, targeted_users, target_host, severity
+index=windows EventCode=4625
+| stats count min(_time) as firstTime max(_time) as lastTime by src_ip, user
+| where count >= 10 AND (lastTime - firstTime) <= 120
 ```
 
 **Alert configuration in Splunk:**
